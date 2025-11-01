@@ -50,7 +50,7 @@ def play_game():
         if play_again != 'yes':
             break
             
-    print(Fore.GREEN +  " Thanks for playing!" + Fore.RESET)
+    print(Fore.GREEN +  " byeee Thanks for playing!" + Fore.RESET)
 
 if __name__ == "__main__":
     play_game()
