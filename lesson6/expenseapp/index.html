@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>ExpenseFlow — Expense Tracker</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+<div class="app-shell">
+
+    <aside class="sidebar">
+
+        <div class="brand">
+
+            <div class="brand-icon">
+                ₹
+            </div>
+
+            <div>
+                <h2>ExpenseFlow</h2>
+                <span>Personal finance</span>
+            </div>
+
+        </div>
+
+        <nav>
+
+            <button class="nav-item active"
+                    onclick="scrollToSection('dashboard')">
+                ⌂
+                <span>Dashboard</span>
+            </button>
+
+            <button class="nav-item"
+                    onclick="scrollToSection('expenses')">
+                ▣
+                <span>Expenses</span>
+            </button>
+
+            <button class="nav-item"
+                    onclick="focusForm()">
+                ＋
+                <span>Add Expense</span>
+            </button>
+
+        </nav>
+
+        <div class="sidebar-tip">
+
+            <div>💡</div>
+
+            <strong>Small habits matter</strong>
+
+            <p>
+                Track every expense and see where your money goes.
+            </p>
+
+        </div>
+
+    </aside>
+
+
+    <main class="main">
+
+        <header class="topbar">
+
+            <div>
+
+                <p class="eyebrow">
+                    PERSONAL FINANCE
+                </p>
+
+                <h1>
+                    Good morning 👋
+                </h1>
+
+                <p class="muted">
+                    Here's your spending overview.
+                </p>
+
+            </div>
+
+            <button class="primary-btn"
+                    onclick="focusForm()">
+                ＋ Add expense
+            </button>
+
+        </header>
+
+
+        <!-- DASHBOARD -->
+
+        <section id="dashboard"
+                 class="stats-grid">
+
+            <div class="stat-card total">
+
+                <div class="stat-top">
+                    <span>Total spent</span>
+                    <span>₹</span>
+                </div>
+
+                <strong id="totalAmount">
+                    ₹0.00
+                </strong>
+
+                <small>
+                    All recorded expenses
+                </small>
+
+            </div>
+
+
+            <div class="stat-card">
+
+                <div class="stat-top">
+                    <span>This month</span>
+                    <span>◷</span>
+                </div>
+
+                <strong id="monthAmount">
+                    ₹0.00
+                </strong>
+
+                <small>
+                    Current month
+                </small>
+
+            </div>
+
+
+            <div class="stat-card">
+
+                <div class="stat-top">
+                    <span>Transactions</span>
+                    <span>#</span>
+                </div>
+
+                <strong id="transactionCount">
+                    0
+                </strong>
+
+                <small>
+                    Recorded expenses
+                </small>
+
+            </div>
+
+
+            <div class="stat-card">
+
+                <div class="stat-top">
+                    <span>Average</span>
+                    <span>≈</span>
+                </div>
+
+                <strong id="averageAmount">
+                    ₹0.00
+                </strong>
+
+                <small>
+                    Per transaction
+                </small>
+
+            </div>
+
+        </section>
+
+
+        <!-- ADD + CHART -->
+
+        <section class="content-grid">
+
+
+            <div class="panel"
+                 id="addPanel">
+
+                <div class="panel-heading">
+
+                    <div>
+
+                        <h2>
+                            Add an expense
+                        </h2>
+
+                        <p class="muted">
+                            Record where your money went.
+                        </p>
+
+                    </div>
+
+                    <span class="circle-plus">
+                        ＋
+                    </span>
+
+                </div>
+
+
+                <form id="expenseForm">
+
+                    <label>
+
+                        Description
+
+                        <input
+                            id="title"
+                            type="text"
+                            placeholder="e.g. Lunch, bus ticket..."
+                            required
+                        >
+
+                    </label>
+
+
+                    <div class="two-col">
+
+                        <label>
+
+                            Amount
+
+                            <div class="money-input">
+
+                                <span>₹</span>
+
+                                <input
+                                    id="amount"
+                                    type="number"
+                                    min="0.01"
+                                    step="0.01"
+                                    placeholder="0.00"
+                                    required
+                                >
+
+                            </div>
+
+                        </label>
+
+
+                        <label>
+
+                            Category
+
+                            <select id="category">
+
+                                <option>Food</option>
+                                <option>Travel</option>
+                                <option>Shopping</option>
+                                <option>Bills</option>
+                                <option>Entertainment</option>
+                                <option>Education</option>
+                                <option>Health</option>
+                                <option>Other</option>
+
+                            </select>
+
+                        </label>
+
+                    </div>
+
+
+                    <label>
+
+                        Date
+
+                        <input
+                            id="date"
+                            type="date"
+                            required
+                        >
+
+                    </label>
+
+
+                    <button
+                        class="submit-btn"
+                        type="submit">
+
+                        Add expense
+
+                    </button>
+
+                </form>
+
+            </div>
+
+
+            <!-- CATEGORY CHART -->
+
+            <div class="panel">
+
+                <div class="panel-heading">
+
+                    <div>
+
+                        <h2>
+                            Spending by category
+                        </h2>
+
+                        <p class="muted">
+                            Where your money is going.
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <div id="categoryChart"
+                     class="chart-empty">
+
+                    <div class="empty-icon">
+                        📊
+                    </div>
+
+                    <p>
+                        Add expenses to see your breakdown.
+                    </p>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- EXPENSES -->
+
+        <section
+            class="panel expenses-panel"
+            id="expenses">
+
+            <div class="panel-heading">
+
+                <div>
+
+                    <h2>
+                        Recent expenses
+                    </h2>
+
+                    <p class="muted">
+                        Your latest transactions.
+                    </p>
+
+                </div>
+
+                <button
+                    class="danger-outline"
+                    onclick="deleteAll()">
+
+                    Clear all
+
+                </button>
+
+            </div>
+
+
+            <div id="expenseList"></div>
+
+
+            <div
+                id="emptyState"
+                class="empty-state">
+
+                <div class="empty-icon">
+                    🧾
+                </div>
+
+                <h3>
+                    No expenses yet
+                </h3>
+
+                <p>
+                    Add your first expense using the form above.
+                </p>
+
+            </div>
+
+        </section>
+
+    </main>
+
+</div>
+
+
+<div id="toast"
+     class="toast">
+</div>
+
+
+<script src="{{ url_for('static', filename='app.js') }}">
+</script>
+
+</body>
+
+</html>
