@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shadow Cinematic Jutsu</title>
+  <style>
+    * { box-sizing: border-box; }
+    body, html {
+      margin: 0; padding: 0; width: 100%; height: 100%;
+      background: #000; overflow: hidden;
+      display: flex; justify-content: center; align-items: center;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    .app-viewport {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    #webcam {
+      position: absolute; width: 100%; height: 100%;
+      object-fit: cover; transform: scaleX(-1);
+      z-index: 1;
+    }
+
+    #canvas {
+      position: absolute; width: 100%; height: 100%;
+      transform: scaleX(-1); z-index: 2;
+      pointer-events: none;
+    }
+
+    .jutsu-badge {
+      position: absolute; top: 40px; left: 50%; transform: translateX(-50%);
+      z-index: 3; background: rgba(2, 3, 7, 0.96);
+      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      border: 2px solid rgba(255, 255, 255, 0.25);
+      padding: 14px 60px; border-radius: 6px; color: #fff;
+      font-size: 16px; font-weight: 900; letter-spacing: 10px;
+      text-transform: uppercase; text-align: center;
+      box-shadow: 0 0 50px rgba(0, 0, 0, 0.95);
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+</head>
+<body>
+
+  <div class="app-viewport">
+    <video id="webcam" autoplay playsinline muted></video>
+    <canvas id="canvas"></canvas>
+    <div id="status" class="jutsu-badge">RESONATING CHAKRA SHADOWS...</div>
+  </div>
+
+  <script>
+    const video = document.getElementById('webcam');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const statusText = document.getElementById('status');
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    let angle = 0;
+    let smoothX = window.innerWidth / 2;
+    let smoothY = window.innerHeight / 2;
+    
+    let embers = [];
+    const MAX_EMBERS = 70;
+
+    function updateEmbers(targetX, targetY, shadowColorHex) {
+      if (embers.length < MAX_EMBERS && Math.random() < 0.65) {
+        embers.push({
+          x: targetX + (Math.random() * 80 - 40),
+          y: targetY + (Math.random() * 80 - 40),
+          vx: Math.random() * 6 - 3,
+          vy: Math.random() * -6 - 2,
+          size: Math.random() * 6 + 2,
+          life: 1
+        });
+      }
+
+      for (let i = embers.length - 1; i >= 0; i--) {
+        let p = embers[i];
+        p.x += p.vx; p.y += p.vy; p.life -= 0.025;
+        
+        if (p.life <= 0) { embers.splice(i, 1); continue; }
+
+        ctx.save();
+        ctx.globalAlpha = p.life;
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = shadowColorHex;
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    function onResults(results) {
+      // Clears entirely so your webcam background is 100% untouched and bright
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+        const landmarks = results.multiHandLandmarks[0];
+        const targetX = landmarks[9].x * canvas.width;
+        const targetY = landmarks[9].y * canvas.height;
+        
+        smoothX += (targetX - smoothX) * 0.22;
+        smoothY += (targetY - smoothY) * 0.22;
+
+        drawSleekSkeleton(landmarks);
+
+        const spanDist = Math.hypot(landmarks[4].x - landmarks[8].x, landmarks[4].y - landmarks[8].y);
+
+        if (spanDist > 0.15) {
+          statusText.innerText = "🍃 RASENSHURIKEN 🍃";
+          statusText.style.borderColor = "#00e5ff";
+          statusText.style.boxShadow = "0 0 45px rgba(0, 229, 255, 0.7)";
+          
+          updateEmbers(smoothX, smoothY, '#00e5ff');
+          drawMaxShadowRasenshuriken(smoothX, smoothY);
+        } else {
+          statusText.innerText = "⚡ CHIDORI ⚡";
+          statusText.style.borderColor = "#ca99ff";
+          statusText.style.boxShadow = "0 0 45px rgba(202, 153, 255, 0.7)";
+          
+          updateEmbers(smoothX, smoothY, '#ca99ff');
+          drawMaxShadowChidori(smoothX, smoothY);
+        }
+      } else {
+        statusText.innerText = "AWAITING CHAKRA SIGNAL";
+        statusText.style.borderColor = "rgba(255, 255, 255, 0.2)";
+        statusText.style.boxShadow = "none";
+        embers = [];
+      }
+    }
+
+    function drawSleekSkeleton(landmarks) {
+      ctx.save();
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = '#00f3ff';
+      ctx.strokeStyle = 'rgba(0, 243, 255, 0.5)';
+      ctx.lineWidth = 2.5;
+      
+      const connections = [
+        [0,1], [1,2], [2,3], [3,4], [0,5], [5,6], [6,7], [7,8],
+        [5,9], [9,10], [10,11], [11,12], [9,13], [13,14], [14,15],
+        [15,16], [0,17], [17,18], [18,19], [19,20], [13,17]
+      ];
+      
+      connections.forEach(([start, end]) => {
+        ctx.beginPath();
+        ctx.moveTo(landmarks[start].x * canvas.width, landmarks[start].y * canvas.height);
+        ctx.lineTo(landmarks[end].x * canvas.width, landmarks[end].y * canvas.height);
+        ctx.stroke();
+      });
+
+      ctx.fillStyle = '#ffffff';
+      for(let point of landmarks) {
+        ctx.beginPath(); ctx.arc(point.x * canvas.width, point.y * canvas.height, 4.5, 0, 2 * Math.PI); ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    // --- MAX SHADOW DESIGN: RASENSHURIKEN ---
+    function drawMaxShadowRasenshuriken(x, y) {
+      angle += 0.5; 
+      ctx.save();
+      ctx.translate(x, y);
+      
+      const pulse = 1 + Math.sin(angle * 2.5) * 0.06;
+      ctx.scale(pulse, pulse);
+
+      // Shadow Pass 1: Pitch Black Silhouette Contrast Plate
+      ctx.shadowBlur = 90;
+      ctx.shadowColor = '#000000';
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.95)';
+      ctx.beginPath(); ctx.arc(0, 0, 115, 0, Math.PI * 2); ctx.fill();
+
+      // Shadow Pass 2: Outer Volumetric Dark Midnight Blue Radial Eclipse
+      ctx.shadowBlur = 75;
+      ctx.shadowColor = 'rgba(0, 40, 150, 0.9)';
+      ctx.fillStyle = 'rgba(1, 4, 15, 0.85)';
+      ctx.beginPath(); ctx.arc(0, 0, 105, 0, Math.PI * 2); ctx.fill();
+
+      // Layer 3: Concentric Internal Energy Wind Tracks
+      ctx.shadowBlur = 25;
+      ctx.shadowColor = '#00e5ff';
+      ctx.lineWidth = 3;
+      for (let r = 70; r <= 130; r += 30) {
+        ctx.strokeStyle = `rgba(0, 229, 255, ${0.45 - (r/450)})`;
+        ctx.beginPath();
+        ctx.arc(0, 0, r + Math.sin(angle + r)*6, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      // Layer 4: Bright Glowing Center Core Blending
+      let coreGlow = ctx.createRadialGradient(0, 0, 0, 0, 0, 95);
+      coreGlow.addColorStop(0, '#ffffff');
+      coreGlow.addColorStop(0.2, '#e6fdff');
+      coreGlow.addColorStop(0.5, 'rgba(0, 229, 255, 0.95)');
+      coreGlow.addColorStop(0.8, 'rgba(0, 90, 255, 0.5)');
+      coreGlow.addColorStop(1, 'rgba(0, 30, 120, 0)');
+      ctx.fillStyle = coreGlow;
+      ctx.beginPath(); ctx.arc(0, 0, 95, 0, Math.PI * 2); ctx.fill();
+
+      // Layer 5: Multi-Staged Heavy Neon Shuriken Blades
+      ctx.rotate(angle);
+      const bladeLayers = 3;
+      
+      for (let layer = 0; layer < bladeLayers; layer++) {
+        ctx.save();
+        ctx.rotate(layer * 0.09);
+        
+        // Deepen edge shadow accents per blade structure layer
+        ctx.shadowBlur = 60 - (layer * 12);
+        ctx.shadowColor = layer === 0 ? '#00bcff' : '#003cd4';
+        
+        for (let i = 0; i < 4; i++) {
+          ctx.rotate(Math.PI / 2);
+          
+          let bladeFill = ctx.createLinearGradient(0, 0, 310, 0);
+          bladeFill.addColorStop(0, 'rgba(255, 255, 255, 0.75)');
+          bladeFill.addColorStop(0.4, 'rgba(135, 242, 255, 0.4)');
+          bladeFill.addColorStop(1, 'rgba(0, 60, 200, 0)');
+          
+          ctx.fillStyle = bladeFill;
+          ctx.strokeStyle = layer === 0 ? '#ffffff' : 'rgba(150, 235, 255, 0.35)';
+          ctx.lineWidth = layer === 0 ? 5.5 : 2;
+
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.quadraticCurveTo(90, -105, 315 - (layer * 20), 0); 
+          ctx.quadraticCurveTo(80, 45, 0, 0);
+          ctx.fill();
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+      ctx.restore();
+    }
+
+    // --- MAX SHADOW DESIGN: CHIDORI ---
+    function drawMaxShadowChidori(x, y) {
+      ctx.save();
+      
+      // Shadow Pass 1: Total Black Electrical Void Mask
+      ctx.shadowBlur = 100;
+      ctx.shadowColor = '#000000';
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.94)';
+      ctx.beginPath(); ctx.arc(x, y, 120, 0, Math.PI * 2); ctx.fill();
+
+      // Shadow Pass 2: Giant Deep Cosmic Purple Shadow Sphere
+      ctx.shadowBlur = 85;
+      ctx.shadowColor = 'rgba(75, 15, 180, 1)';
+      ctx.fillStyle = 'rgba(12, 3, 28, 0.85)';
+      ctx.beginPath(); ctx.arc(x, y, 105, 0, Math.PI * 2); ctx.fill();
+
+      // Layer 3: Blinding Core White-Blue Fluid Core Glow
+      let ambientPlasma = ctx.createRadialGradient(x, y, 0, x, y, 95);
+      ambientPlasma.addColorStop(0, '#ffffff');
+      ambientPlasma.addColorStop(0.2, '#f0faff');
+      ambientPlasma.addColorStop(0.45, 'rgba(160, 90, 255, 0.9)');
+      ambientPlasma.addColorStop(0.8, 'rgba(50, 0, 200, 0.4)');
+      ambientPlasma.addColorStop(1, 'rgba(15, 0, 90, 0)');
+      ctx.fillStyle = ambientPlasma;
+      ctx.beginPath(); ctx.arc(x, y, 95, 0, Math.PI * 2); ctx.fill();
+
+      // Layer 4: Multi-Tier Density Lightning Forks (36 Lines Total)
+      const linesCount = 36; 
+      ctx.shadowBlur = 35;
+      ctx.shadowColor = '#46e2ff';
+
+      for (let i = 0; i < linesCount; i++) {
+        let curX = x;
+        let curY = y;
+        
+        const mode = i % 3;
+        if (mode === 0) {
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 5; // Center hot white current lines
+          ctx.shadowColor = '#00bfff';
+        } else if (mode === 1) {
+          ctx.strokeStyle = 'rgba(195, 120, 255, 0.95)';
+          ctx.lineWidth = 2.5; // Mid-layer arcs
+          ctx.shadowColor = '#a020f0';
+        } else {
+          ctx.strokeStyle = 'rgba(100, 235, 255, 0.7)';
+          ctx.lineWidth = 1.2; // Tiny perimeter electrical noise threads
+          ctx.shadowColor = '#00f3ff';
+        }
+        
+        ctx.beginPath();
+        ctx.moveTo(curX, curY);
+
+        const segments = 8; 
+        const baseAngle = (i * (Math.PI * 2) / linesCount) + (Math.random() * 0.25 - 0.125);
+        const totalDistance = 160 + (Math.random() * 80); 
+
+        for (let j = 0; j < segments; j++) {
+          const step = totalDistance / segments;
+          
+          // Amplified jagged distortion logic expanding outwards 
+          const jaggedForce = 35 + (j * 5); 
+          curX += Math.cos(baseAngle) * step + (Math.random() * jaggedForce - jaggedForce / 2);
+          curY += Math.sin(baseAngle) * step + (Math.random() * jaggedForce - jaggedForce / 2);
+          
+          ctx.lineTo(curX, curY);
+        }
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    const hands = new Hands({
+      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+    });
+
+    hands.setOptions({
+      maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.65, minTrackingConfidence: 0.65
+    });
+    hands.onResults(onResults);
+
+    const camera = new Camera(video, {
+      onFrame: async () => { await hands.send({image: video}); },
+      width: 1280, height: 720
+    });
+
+    camera.start()
+      .then(() => { statusText.innerText = "MAX SHADOW CONTEXT DEPLOYED"; })
+      .catch(err => {
+        statusText.innerText = "ERROR: LOCAL WEB SERVER CONNECTION REQUIRED";
+        console.error(err);
+      });
+  </script>
+</body>
+</html>

@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Hand Frame</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #111;
+            overflow: hidden;
+            font-family: sans-serif;
+        }
+
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Mirror the webcam and canvas for natural interaction */
+        video, canvas {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1);
+        }
+
+        #loading {
+            position: absolute;
+            color: white;
+            font-size: 1.5rem;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px 30px;
+            border-radius: 8px;
+            z-index: 10;
+            pointer-events: none;
+        }
+    </style>
+
+    <!-- Load MediaPipe Hands via CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+</head>
+<body>
+
+    <div id="container">
+        <div id="loading">Initializing Camera & Hand Tracking...</div>
+        <video id="webcam" autoplay playsinline></video>
+        <canvas id="output_canvas"></canvas>
+    </div>
+
+    <script>
+        const videoElement = document.getElementById('webcam');
+        const canvasElement = document.getElementById('output_canvas');
+        const canvasCtx = canvasElement.getContext('2d');
+        const loadingElement = document.getElementById('loading');
+
+        // Adjust canvas internal resolution to match viewport
+        function resizeCanvas() {
+            canvasElement.width = window.innerWidth;
+            canvasElement.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Handle MediaPipe Tracking Results
+        function onResults(results) {
+            // Hide loading indicator on first successful frame processing
+            if (loadingElement.style.display !== 'none') {
+                loadingElement.style.display = 'none';
+            }
+
+            // Clear canvas
+            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+
+            // If hands are detected
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                let points = [];
+
+                // Standard MediaPipe landmark IDs: 
+                // Index Finger Tip = 8, Thumb Tip = 4
+                
+                if (results.multiHandLandmarks.length === 2) {
+                    // Two-hand mode: Create a box using index and thumb of both hands
+                    const hand1 = results.multiHandLandmarks[0];
+                    const hand2 = results.multiHandLandmarks[1];
+
+                    points = [
+                        hand1[8], // Top Left-ish
+                        hand2[8], // Top Right-ish
+                        hand2[4], // Bottom Right-ish
+                        hand1[4]  // Bottom Left-ish
+                    ].map(pt => ({
+                        x: pt.x * canvasElement.width,
+                        y: pt.y * canvasElement.height
+                    }));
+                } else if (results.multiHandLandmarks.length === 1) {
+                    // One-hand mode: Generate a static-sized box centered around the single hand
+                    const hand = results.multiHandLandmarks[0];
+                    const cx = hand[9].x * canvasElement.width; // Middle finger MCP
+                    const cy = hand[9].y * canvasElement.height;
+                    
+                    points = [
+                        { x: cx - 150, y: cy - 75 },
+                        { x: cx + 150, y: cy - 75 },
+                        { x: cx + 150, y: cy + 75 },
+                        { x: cx - 150, y: cy + 75 }
+                    ];
+                }
+
+                if (points.length === 4) {
+                    drawARFrame(points, results.image);
+                }
+            }
+        }
+
+        // Draws the cyber graphic frame clipped inside the hand coordinates
+        function drawARFrame(pts, originalImage) {
+            canvasCtx.save();
+
+            // 1. Create the clipping mask path between the fingers
+            canvasCtx.beginPath();
+            canvasCtx.moveTo(pts[0].x, pts[0].y);
+            canvasCtx.lineTo(pts[1].x, pts[1].y);
+            canvasCtx.lineTo(pts[2].x, pts[2].y);
+            canvasCtx.lineTo(pts[3].x, pts[3].y);
+            canvasCtx.closePath();
+
+            // 2. Fill the inner box background (Dark Royal Blue)
+            canvasCtx.fillStyle = 'rgba(10, 30, 150, 0.85)';
+            canvasCtx.fill();
+            
+            canvasCtx.clip();
+
+            // 3. Generate the Cyber Pixel / Matrix Effect inside the clip
+            // Creates random neon blue and white pixels inside the bounding box
+            const minX = Math.min(...pts.map(p => p.x));
+            const maxX = Math.max(...pts.map(p => p.x));
+            const minY = Math.min(...pts.map(p => p.y));
+            const maxY = Math.max(...pts.map(p => p.y));
+
+            const gridSize = 8; // Size of the matrix pixels
+            for (let x = minX; x < maxX; x += gridSize) {
+                for (let y = minY; y < maxY; y += gridSize) {
+                    // Only draw if the point falls inside the geometric polygon shape
+                    if (canvasCtx.isPointInPath(x, y) && Math.random() > 0.4) {
+                        const rand = Math.random();
+                        if (rand > 0.85) {
+                            canvasCtx.fillStyle = 'rgba(255, 255, 255, 0.9)'; // White spots
+                        } else if (rand > 0.4) {
+                            canvasCtx.fillStyle = 'rgba(0, 180, 255, 0.7)';   // Neon cyan spots
+                        } else {
+                            canvasCtx.fillStyle = 'rgba(0, 40, 200, 0.4)';    // Dark blue spots
+                        }
+                        canvasCtx.fillRect(x, y, gridSize - 2, gridSize - 2);
+                    }
+                }
+            }
+            canvasCtx.restore();
+
+            // 4. Draw Outer Neon Borders
+            canvasCtx.lineWidth = 4;
+            canvasCtx.strokeStyle = '#00d2ff';
+            canvasCtx.shadowBlur = 15;
+            canvasCtx.shadowColor = '#00d2ff';
+            
+            canvasCtx.beginPath();
+            canvasCtx.moveTo(pts[0].x, pts[0].y);
+            canvasCtx.lineTo(pts[1].x, pts[1].y);
+            canvasCtx.lineTo(pts[2].x, pts[2].y);
+            canvasCtx.lineTo(pts[3].x, pts[3].y);
+            canvasCtx.closePath();
+            canvasCtx.stroke();
+
+            // 5. Draw the Bright Green Corner Tracking Blocks
+            canvasCtx.shadowBlur = 0; // Turn off glow for corners
+            canvasCtx.fillStyle = '#00ffaa';
+            
+            pts.forEach(pt => {
+                canvasCtx.fillRect(pt.x - 10, pt.y - 10, 20, 20);
+                // Inner accent lines
+                canvasCtx.strokeStyle = '#ffffff';
+                canvasCtx.lineWidth = 2;
+                canvasCtx.strokeRect(pt.x - 10, pt.y - 10, 20, 20);
+            });
+        }
+
+        // Initialize MediaPipe Hands configuration
+        const hands = new Hands({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+        });
+
+        hands.setOptions({
+            maxNumHands: 2,
+            modelComplexity: 1,
+            minDetectionConfidence: 0.6,
+            minTrackingConfidence: 0.6
+        });
+
+        hands.onResults(onResults);
+
+        // Instantiate the webcam setup wrapper provided by MediaPipe
+        const camera = new Camera(videoElement, {
+            onFrame: async () => {
+                await hands.send({ image: videoElement });
+            },
+            width: 1280,
+            height: 720
+        });
+        
+        camera.start().catch(err => {
+            loadingElement.innerText = "Camera Access Denied or Not Found.";
+            console.error(err);
+        });
+    </script>
+</body>
+</html>
